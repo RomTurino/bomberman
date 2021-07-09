@@ -22,15 +22,32 @@ class ExplodableBlock(arcade.Sprite):
     def __init__(self):
         super().__init__('Blocks/ExplodableBlock.png')
 
-class Bomberman(arcade.AnimatedTimeSprite):
+class Bomberman(arcade.AnimatedWalkingSprite):
     def __init__(self):
         super().__init__(0.5)
         self.texture = arcade.load_texture('Bomberman/Front/Bman_F_f00.png')
-        for i in range(8):
-            self.textures.append(arcade.load_texture(f'Bomberman/Front/Bman_F_f0{i}.png'))
         self.center_y = SCREEN_HEIGHT/ROW_COUNT - CELL_HEIGHT/2
         self.center_x = SCREEN_WIDTH/COLUMN_COUNT - CELL_WIDTH/2
 
+        #textures front
+        self.textures_front = []
+        for i in range(8):
+            self.textures_front.append(arcade.load_texture(f'Bomberman/Front/Bman_F_f0{i}.png'))
+        # textures front
+        self.textures_back = []
+        for i in range(8):
+            self.textures_back.append(arcade.load_texture(f'Bomberman/Back/Bman_B_f0{i}.png'))
+        #textures_right
+        self.textures_right = []
+        for i in range(8):
+            self.textures_right.append(arcade.load_texture(f'Bomberman/Side/Bman_F_f0{i}.png'))
+        # textures_left
+        self.textures_left = []
+        for i in range(8):
+            self.textures_left.append(arcade.load_texture(f'Bomberman/Side/Bman_F_f0{i}.png',
+                                                          flipped_horizontally=True))
+        self.textures = self.textures_front
+        self.texture = self.textures[0]
 
 class OurGame(arcade.Window):
     # Конструктор окна
@@ -75,16 +92,28 @@ class OurGame(arcade.Window):
     # игровая логика
     def update(self, delta_time):
         self.bomberman.update()
-        if self.walk:
-            self.bomberman.update_animation()
+        self.bomberman.update_animation()
 
     # нажатие на клавишу
-    def on_key_press(self, symbol: int, modifiers: int):
-        pass
-
+    def on_key_press(self, key: int, modifiers: int):
+        if key == arcade.key.LEFT:
+            self.bomberman.change_x = -5
+        if key == arcade.key.RIGHT:
+            self.bomberman.change_x = 5
+        if key == arcade.key.UP:
+            self.bomberman.change_y = 5
+        if key == arcade.key.DOWN:
+            self.bomberman.change_y = -5
     # ненажатие на клавишу
-    def on_key_release(self, symbol: int, modifiers: int):
-        pass
+    def on_key_release(self, key: int, modifiers: int):
+        if key == arcade.key.LEFT:
+            self.bomberman.change_x =  0
+        if key == arcade.key.RIGHT:
+            self.bomberman.change_x = 0
+        if key == arcade.key.UP:
+            self.bomberman.change_y = 0
+        if key == arcade.key.DOWN:
+            self.bomberman.change_y =  0
 
 
 window = OurGame(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)

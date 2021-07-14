@@ -11,7 +11,17 @@ COLUMN_COUNT = 11
 CELL_WIDTH = 60
 CELL_HEIGHT = 60
 SCREEN_TITLE = "Bomberman"
-REPULSION = 30
+REPULSION = 12
+
+
+def position_check(position_x, position_y):
+    for x, y in window.occupied_places:
+        if position_x >= x and position_y >= y:
+            position_x = x
+            position_y = y
+            return position_x, position_y
+        else:
+            return position_x,position_y
 
 
 class SolidBlock(arcade.Sprite):
@@ -28,8 +38,19 @@ class ExplodableBlock(arcade.Sprite):
         super().__init__('Blocks/ExplodableBlock.png')
 
     def update(self):
-        if arcade.check_for_collision(self, window.bomberman):
-            window.bomberman.stop()
+        '''if arcade.check_for_collision(self, window.bomberman):
+            if self.top < window.bomberman.bottom:
+
+                self.top = window.bomberman.bottom - 50
+            elif self.bottom > window.bomberman.top:
+
+                self.bottom = window.bomberman.bottom
+            elif self.right < window.bomberman.left:
+
+                self.right = window.bomberman.left
+            elif self.left > window.bomberman.right:
+
+                self.left = window.bomberman.right'''
 
 
 class Bomberman(arcade.AnimatedTimeSprite):
@@ -62,6 +83,7 @@ class Bomberman(arcade.AnimatedTimeSprite):
     def update(self):
         self.center_x += self.change_x
         self.center_y += self.change_y
+
         if self.left < 0:
             self.left = 0
         if self.right > window.width:
@@ -71,13 +93,30 @@ class Bomberman(arcade.AnimatedTimeSprite):
         if self.top > window.height:
             self.top = window.height
 
+        '''touch = self.collides_with_list(window.blocks)
+        if len(touch) > 0:
+          for block in touch:
+                if self.top > block.bottom:
+                    print(f'Низ у бомбера: {self.bottom}, Верх у блока {block.top}')
+                    self.top = block.bottom - 50
+                elif self.bottom < block.top:
+                    print(f'Верх у бомбера: {self.top}, Низ у блока {block.bottom}')
+                    self.bottom = block.bottom
+                elif self.right > block.left:
+                    print(f'Право у бомбера: {self.right}, лево у блока {block.left}')
+                    self.right = block.left
+                elif self.left < block.right:
+                    print(f'Лево у бомбера: {self.left}, Право у блока {block.right}')
+                    self.left = block.right'''
+
 
 class OurGame(arcade.Window):
     # Конструктор окна
     def __init__(self, width, height, title):
         super().__init__(width, height, title)
         self.bg = arcade.load_texture('Blocks/BackgroundTile.png')
-        self.blocks = arcade.SpriteList()
+        self.blocks = arcade.SpriteList(use_spatial_hash=True)
+        self.grid = []
         self.occupied_places = []
         self.bomberman = Bomberman()
         self.walk = False
@@ -86,21 +125,39 @@ class OurGame(arcade.Window):
     # начальные значения
     def setup(self):
         for x in range(ROW_COUNT):
+            self.grid.append([])
             for y in range(COLUMN_COUNT):
+                if x == 0:
+                    print(f'Итак, x = {x}, y = {y}')
                 if x % 2 == 1 and y % 2 == 1:
+                    self.grid[x].append(1)
                     solid_block = SolidBlock()
                     solid_block.center_x = x * 60 + CELL_WIDTH / 2
                     solid_block.center_y = y * 60 + CELL_HEIGHT / 2
                     self.blocks.append(solid_block)
                     self.occupied_places.append((solid_block.center_x, solid_block.center_y))
-                if random.randint(1, 2) == 1:
+
+                    if x == 0:
+                        print(f'вот добавили единичку - {self.grid[0]}')
+                elif random.randint(1, 2) == 1:
                     if not (x == 0 and y <= 2) and not (y == 0 and x <= 2) and not (y == 10 and x >= 9) and not (
                             x == 10 and y >= 9):  # условие должно выбросить из зоны появления блоков две площадки для главных героев
                         explodable_block = ExplodableBlock()
                         explodable_block.center_x = x * 60 + CELL_WIDTH / 2
                         explodable_block.center_y = y * 60 + CELL_HEIGHT / 2
                         if (explodable_block.center_x, explodable_block.center_y) not in self.occupied_places:
+                            self.grid[x].append(2)
                             self.blocks.append(explodable_block)
+                            self.occupied_places.append((explodable_block.center_x, explodable_block.center_y))
+
+                            if x == 0:
+                                print(f'вот добавили двоечку - {self.grid[0]}')
+                else:
+                    self.grid[x].append(0)
+                    if x == 0:
+                        print(f'вот добавили нолик - {self.grid[0]}')
+        for i in self.grid:
+            print(i)
 
     # отрисовка объектов
     def on_draw(self):
@@ -121,28 +178,25 @@ class OurGame(arcade.Window):
     # нажатие на клавишу
     def on_key_press(self, key: int, modifiers: int):
         touch = arcade.check_for_collision_with_list(self.bomberman, self.blocks)
+
         if key == arcade.key.LEFT and not self.walk:
             self.bomberman.change_x = -10
             self.walk = True
-            if len(touch) > 0:
-                self.bomberman.center_x += REPULSION
 
         if key == arcade.key.RIGHT and not self.walk:
             self.bomberman.change_x = 10
             self.walk = True
-            if len(touch) > 0:
-                self.bomberman.center_x-=REPULSION
+
+
 
         if key == arcade.key.UP and not self.walk:
             self.bomberman.change_y = 10
             self.walk = True
-            if len(touch) > 0:
-                self.bomberman.center_y-=REPULSION
+
         if key == arcade.key.DOWN and not self.walk:
             self.bomberman.change_y = -10
             self.walk = True
-            if len(touch) > 0:
-                self.bomberman.center_x+=REPULSION
+
         # self.step = time.time()
 
     # ненажатие на клавишу

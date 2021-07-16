@@ -57,6 +57,8 @@ class Explosion(arcade.AnimatedTimeSprite):
 
 
 
+
+
 class Bombochka(arcade.AnimatedTimeSprite):
     def __init__(self):
         super().__init__(0.7)
@@ -147,7 +149,7 @@ class Bomberman(arcade.AnimatedTimeSprite):
         if self.top > window.height:
             self.top = window.height
 
-        touch = self.collides_with_list(window.blocks)
+        touch = self.collides_with_list(window.solid_blocks)
         if len(touch) > 0:
             for block in touch:
                 if self.direction == 3 and self.top >= block.bottom:
@@ -165,7 +167,8 @@ class OurGame(arcade.Window):
     def __init__(self, width, height, title):
         super().__init__(width, height, title)
         self.bg = arcade.load_texture('Blocks/BackgroundTile.png')
-        self.blocks = arcade.SpriteList(use_spatial_hash=True)
+        self.solid_blocks = arcade.SpriteList()
+        self.explodable_blocks = arcade.SpriteList()
         self.occupied_places = []
         self.bomberman = Bomberman()
         self.walk = False
@@ -180,7 +183,7 @@ class OurGame(arcade.Window):
                     solid_block = SolidBlock()
                     solid_block.center_x = x * 60 + CELL_WIDTH / 2
                     solid_block.center_y = y * 60 + CELL_HEIGHT / 2
-                    self.blocks.append(solid_block)
+                    self.solid_blocks.append(solid_block)
                     self.occupied_places.append((solid_block.center_x, solid_block.center_y))
                 elif random.randint(1, 2) == 1:
                     if not (x == 0 and y <= 2) and not (y == 0 and x <= 2) and not (y == 10 and x >= 9) and not (
@@ -189,7 +192,7 @@ class OurGame(arcade.Window):
                         explodable_block.center_x = x * 60 + CELL_WIDTH / 2
                         explodable_block.center_y = y * 60 + CELL_HEIGHT / 2
                         if (explodable_block.center_x, explodable_block.center_y) not in self.occupied_places:
-                            self.blocks.append(explodable_block)
+                            self.explodable_blocks.append(explodable_block)
                             # self.occupied_places.append((explodable_block.center_x, explodable_block.center_y))
 
     # отрисовка объектов
@@ -199,20 +202,32 @@ class OurGame(arcade.Window):
             for y in range(11):
                 arcade.draw_texture_rectangle(x * 60 + CELL_WIDTH / 2, y * 60 + CELL_HEIGHT / 2, CELL_WIDTH,
                                               CELL_HEIGHT, self.bg)
-        self.blocks.draw()
+        self.solid_blocks.draw()
+        self.explodable_blocks.draw()
         self.bomberman.draw()
         self.bombs.draw()
         self.explosions.draw()
+
 
     # игровая логика
     def update(self, delta_time):
         self.bomberman.update()
         self.bomberman.update_animation()
-        self.blocks.update()
+
         self.bombs.update()
         self.bombs.update_animation()
         self.explosions.update()
         self.explosions.update_animation()
+        self.solid_blocks.update()
+        self.explodable_blocks.update()
+        for fire in self.explosions:
+            hit_list = arcade.check_for_collision_with_list(fire, self.solid_blocks)
+            if len(hit_list) > 0:
+                fire.kill()
+            destroy = arcade.check_for_collision_with_list(fire, self.explodable_blocks)
+            if len(destroy) > 0:
+                for block in destroy:
+                    block.kill()
 
     # нажатие на клавишу
     def on_key_press(self, key: int, modifiers: int):

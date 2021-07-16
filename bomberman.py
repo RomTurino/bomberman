@@ -12,6 +12,24 @@ CELL_WIDTH = 60
 CELL_HEIGHT = 60
 SCREEN_TITLE = "Bomberman"
 
+POWER = 1
+
+
+def justify_x(position_x):
+    for x in range(ROW_COUNT):
+        x = x * 60 + CELL_WIDTH / 2
+        if abs(position_x - x) <= 30:
+            center_x = x
+            return center_x
+
+
+def justify_y(position_y):
+    for y in range(COLUMN_COUNT):
+        y = y * 60 + CELL_HEIGHT / 2
+        if abs(position_y - y) <= 30:
+            center_y = y
+            return center_y
+
 
 class SolidBlock(arcade.Sprite):
     def __init__(self):
@@ -22,35 +40,63 @@ class ExplodableBlock(arcade.Sprite):
     def __init__(self):
         super().__init__('Blocks/ExplodableBlock.png')
 
+class Explosion(arcade.AnimatedTimeSprite):
+    def __init__(self):
+        super().__init__(0.7)
+        print('появился взрыв')
+        for i in range(5):
+            self.textures.append(arcade.load_texture(f'Flame/Flame_f0{i}.png'))
+        self.tm = time.time()
+
+    def update(self):
+        if time.time() - self.tm > 2:
+            self.kill()
+
+
+
+
+
 
 class Bombochka(arcade.AnimatedTimeSprite):
     def __init__(self):
         super().__init__(0.7)
-        for i in range(1,4):
+
+        for i in range(1, 4):
             self.textures.append(arcade.load_texture(f'Bomb/Bomb_f0{i}.png'))
         self.texture = self.textures[0]
-        self.justify()
-        #self.center_x = window.bomberman.center_x
-        #self.center_y = window.bomberman.center_y
+        self.time_bomb = time.time()
 
-    def justify(self):
-        self.center_x = window.bomberman.center_x
-        self.center_y = window.bomberman.center_y
-        for x in range(ROW_COUNT):
-            for y in range(COLUMN_COUNT):
-                if abs(self.center_x - x) <= 30 and abs(self.center_y - y) <= 30:
-                    print(f'разница по иксу {self.center_x - x}')
-                    print(f'разница по игреку {self.center_y - y}')
-                    self.center_x = x * 60 + CELL_WIDTH / 2
-                    self.center_y = y * 60 + CELL_HEIGHT / 2
+    def update(self):
+        if time.time() - self.time_bomb > 3:
+            exp = Explosion()
+            exp.center_x = self.center_x
+            exp.center_y = self.center_y
+            for i in range(1,POWER+1):
+                exp1 = Explosion()
+                exp1.center_x = exp.center_x - CELL_WIDTH*i
+                exp1.center_y = exp.center_y
+                window.explosions.append(exp1)
+                exp2 = Explosion()
+                exp2.center_x = exp.center_x + CELL_WIDTH * i
+                exp2.center_y = exp.center_y
+                window.explosions.append(exp2)
+                exp3 = Explosion()
+                exp3.center_x = exp.center_x
+                exp3.center_y = exp.center_y - CELL_HEIGHT*i
+                window.explosions.append(exp3)
+                exp4 = Explosion()
+                exp4.center_x = exp.center_x
+                exp4.center_y = exp.center_y + CELL_HEIGHT*i
+                window.explosions.append(exp4)
 
-
+            window.explosions.append(exp)
+            self.kill()
 
 
 class Bomberman(arcade.AnimatedTimeSprite):
     def __init__(self):
         super().__init__(0.5)
-        #self.texture = arcade.load_texture('Bomberman/Front/Bman_F_f00.png')
+        # self.texture = arcade.load_texture('Bomberman/Front/Bman_F_f00.png')
         self.center_y = SCREEN_HEIGHT / ROW_COUNT - CELL_HEIGHT / 2
         self.center_x = SCREEN_WIDTH / COLUMN_COUNT - CELL_WIDTH / 2
 
@@ -88,8 +134,6 @@ class Bomberman(arcade.AnimatedTimeSprite):
         elif self.direction == 4:
             self.textures = self.walk_down_textures
 
-
-
     def update(self):
         self.center_x += self.change_x
         self.center_y += self.change_y
@@ -126,6 +170,7 @@ class OurGame(arcade.Window):
         self.bomberman = Bomberman()
         self.walk = False
         self.bombs = arcade.SpriteList()
+        self.explosions = arcade.SpriteList()
 
     # начальные значения
     def setup(self):
@@ -157,6 +202,7 @@ class OurGame(arcade.Window):
         self.blocks.draw()
         self.bomberman.draw()
         self.bombs.draw()
+        self.explosions.draw()
 
     # игровая логика
     def update(self, delta_time):
@@ -165,6 +211,8 @@ class OurGame(arcade.Window):
         self.blocks.update()
         self.bombs.update()
         self.bombs.update_animation()
+        self.explosions.update()
+        self.explosions.update_animation()
 
     # нажатие на клавишу
     def on_key_press(self, key: int, modifiers: int):
@@ -191,7 +239,9 @@ class OurGame(arcade.Window):
 
         if key == arcade.key.SPACE:
             bomb = Bombochka()
-            bomb.justify()
+            bomb.center_x = justify_x(self.bomberman.center_x)
+            bomb.center_y = justify_y(self.bomberman.center_y)
+
             self.bombs.append(bomb)
 
     # ненажатие на клавишу

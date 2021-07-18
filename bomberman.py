@@ -40,6 +40,7 @@ class ExplodableBlock(arcade.Sprite):
     def __init__(self):
         super().__init__('Blocks/ExplodableBlock.png')
 
+
 class Explosion(arcade.AnimatedTimeSprite):
     def __init__(self):
         super().__init__(0.7)
@@ -51,12 +52,6 @@ class Explosion(arcade.AnimatedTimeSprite):
     def update(self):
         if time.time() - self.tm > 2:
             self.kill()
-
-
-
-
-
-
 
 
 class Bombochka(arcade.AnimatedTimeSprite):
@@ -73,9 +68,9 @@ class Bombochka(arcade.AnimatedTimeSprite):
             exp = Explosion()
             exp.center_x = self.center_x
             exp.center_y = self.center_y
-            for i in range(1,POWER+1):
+            for i in range(1, POWER + 1):
                 exp1 = Explosion()
-                exp1.center_x = exp.center_x - CELL_WIDTH*i
+                exp1.center_x = exp.center_x - CELL_WIDTH * i
                 exp1.center_y = exp.center_y
                 window.explosions.append(exp1)
                 exp2 = Explosion()
@@ -84,11 +79,11 @@ class Bombochka(arcade.AnimatedTimeSprite):
                 window.explosions.append(exp2)
                 exp3 = Explosion()
                 exp3.center_x = exp.center_x
-                exp3.center_y = exp.center_y - CELL_HEIGHT*i
+                exp3.center_y = exp.center_y - CELL_HEIGHT * i
                 window.explosions.append(exp3)
                 exp4 = Explosion()
                 exp4.center_x = exp.center_x
-                exp4.center_y = exp.center_y + CELL_HEIGHT*i
+                exp4.center_y = exp.center_y + CELL_HEIGHT * i
                 window.explosions.append(exp4)
 
             window.explosions.append(exp)
@@ -99,8 +94,6 @@ class Bomberman(arcade.AnimatedTimeSprite):
     def __init__(self):
         super().__init__(0.5)
         # self.texture = arcade.load_texture('Bomberman/Front/Bman_F_f00.png')
-        self.center_y = SCREEN_HEIGHT / ROW_COUNT - CELL_HEIGHT / 2
-        self.center_x = SCREEN_WIDTH / COLUMN_COUNT - CELL_WIDTH / 2
 
         # textures front
         self.walk_down_textures = []
@@ -140,6 +133,8 @@ class Bomberman(arcade.AnimatedTimeSprite):
         self.center_x += self.change_x
         self.center_y += self.change_y
         self.costume_change()
+        self.collisions(window.solid_blocks)
+        self.collisions(window.explodable_blocks)
         if self.left < 0:
             self.left = 0
         if self.right > window.width:
@@ -149,13 +144,14 @@ class Bomberman(arcade.AnimatedTimeSprite):
         if self.top > window.height:
             self.top = window.height
 
-        touch = self.collides_with_list(window.solid_blocks)
+    def collisions(self, spritelist):
+        touch = arcade.check_for_collision_with_list(self, spritelist)
         if len(touch) > 0:
             for block in touch:
                 if self.direction == 3 and self.top >= block.bottom:
                     self.top = block.bottom
                 elif self.direction == 4 and self.bottom <= block.top:
-                    self.bottom = block.bottom
+                    self.bottom = block.top
                 elif self.direction == 2 and self.right >= block.left:
                     self.right = block.left
                 elif self.direction == 1 and self.left <= block.right:
@@ -170,8 +166,10 @@ class OurGame(arcade.Window):
         self.solid_blocks = arcade.SpriteList()
         self.explodable_blocks = arcade.SpriteList()
         self.occupied_places = []
-        self.bomberman = Bomberman()
-        self.walk = False
+        self.player1 = Bomberman()
+        self.player2 = Bomberman()
+        self.player1_walk = False
+        self.player2_walk = False
         self.bombs = arcade.SpriteList()
         self.explosions = arcade.SpriteList()
 
@@ -194,6 +192,12 @@ class OurGame(arcade.Window):
                         if (explodable_block.center_x, explodable_block.center_y) not in self.occupied_places:
                             self.explodable_blocks.append(explodable_block)
                             # self.occupied_places.append((explodable_block.center_x, explodable_block.center_y))
+        self.player1.center_y = SCREEN_HEIGHT / ROW_COUNT - CELL_HEIGHT / 2
+        self.player1.center_x = SCREEN_WIDTH / COLUMN_COUNT - CELL_WIDTH / 2
+        self.player2.center_y = SCREEN_HEIGHT - CELL_HEIGHT / 2
+        self.player2.center_x = SCREEN_WIDTH - CELL_WIDTH / 2
+        #self.player2.color = (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200))
+        self.player2.color = arcade.color.RED
 
     # отрисовка объектов
     def on_draw(self):
@@ -204,16 +208,17 @@ class OurGame(arcade.Window):
                                               CELL_HEIGHT, self.bg)
         self.solid_blocks.draw()
         self.explodable_blocks.draw()
-        self.bomberman.draw()
+        self.player1.draw()
+        self.player2.draw()
         self.bombs.draw()
         self.explosions.draw()
 
-
     # игровая логика
     def update(self, delta_time):
-        self.bomberman.update()
-        self.bomberman.update_animation()
-
+        self.player1.update()
+        self.player1.update_animation()
+        self.player2.update()
+        self.player2.update_animation()
         self.bombs.update()
         self.bombs.update_animation()
         self.explosions.update()
@@ -232,43 +237,79 @@ class OurGame(arcade.Window):
     # нажатие на клавишу
     def on_key_press(self, key: int, modifiers: int):
 
-        if key == arcade.key.LEFT and not self.walk:
-            self.bomberman.change_x = -10
-            self.bomberman.direction = 1
-            self.walk = True
+        if key == arcade.key.LEFT and not self.player1_walk:
+            self.player1.change_x = -10
+            self.player1.direction = 1
+            self.player1_walk = True
 
-        if key == arcade.key.RIGHT and not self.walk:
-            self.bomberman.change_x = 10
-            self.bomberman.direction = 2
-            self.walk = True
+        if key == arcade.key.RIGHT and not self.player1_walk:
+            self.player1.change_x = 10
+            self.player1.direction = 2
+            self.player1_walk = True
 
-        if key == arcade.key.UP and not self.walk:
-            self.bomberman.change_y = 10
-            self.bomberman.direction = 3
-            self.walk = True
+        if key == arcade.key.UP and not self.player1_walk:
+            self.player1.change_y = 10
+            self.player1.direction = 3
+            self.player1_walk = True
 
-        if key == arcade.key.DOWN and not self.walk:
-            self.bomberman.change_y = -10
-            self.bomberman.direction = 4
-            self.walk = True
+        if key == arcade.key.DOWN and not self.player1_walk:
+            self.player1.change_y = -10
+            self.player1.direction = 4
+            self.player1_walk = True
 
         if key == arcade.key.SPACE:
             bomb = Bombochka()
-            bomb.center_x = justify_x(self.bomberman.center_x)
-            bomb.center_y = justify_y(self.bomberman.center_y)
+            bomb.center_x = justify_x(self.player1.center_x)
+            bomb.center_y = justify_y(self.player1.center_y)
+            self.bombs.append(bomb)
 
+
+
+        if key == arcade.key.A and not self.player2_walk:
+            self.player2.change_x = -10
+            self.player2.direction = 1
+            self.player2_walk = True
+
+        if key == arcade.key.D and not self.player2_walk:
+            self.player2.change_x = 10
+            self.player2.direction = 2
+            self.player2_walk = True
+
+        if key == arcade.key.W and not self.player2_walk:
+            self.player2.change_y = 10
+            self.player2.direction = 3
+            self.player2_walk = True
+
+        if key == arcade.key.S and not self.player2_walk:
+            self.player2.change_y = -10
+            self.player2.direction = 4
+            self.player2_walk = True
+
+        if key == arcade.key.F:
+            bomb = Bombochka()
+            bomb.center_x = justify_x(self.player2.center_x)
+            bomb.center_y = justify_y(self.player2.center_y)
             self.bombs.append(bomb)
 
     # ненажатие на клавишу
     def on_key_release(self, key: int, modifiers: int):
         if key == arcade.key.LEFT or key == arcade.key.RIGHT:
-            self.bomberman.change_x = 0
-            self.bomberman.direction = 0
-            self.walk = False
+            self.player1.change_x = 0
+            self.player1.direction = 0
+            self.player1_walk = False
         if key == arcade.key.UP or key == arcade.key.DOWN:
-            self.bomberman.change_y = 0
-            self.bomberman.direction = 0
-            self.walk = False
+            self.player1.change_y = 0
+            self.player1.direction = 0
+            self.player1_walk = False
+
+        if key == arcade.key.A or key == arcade.key.D:
+            self.player2.change_x = 0
+            self.player2.direction = 0
+            self.player2_walk = False
+        if key == arcade.key.W or key == arcade.key.S:
+            self.player2.change_y = 0
+            self.player2.direction = 0
+            self.player2_walk = False
 
 
 window = OurGame(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)

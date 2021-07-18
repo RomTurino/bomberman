@@ -12,7 +12,13 @@ CELL_WIDTH = 60
 CELL_HEIGHT = 60
 SCREEN_TITLE = "Bomberman"
 
-POWER = 1
+POWER_PLAYER1 = 1
+SPEED_PLAYER1 = 10
+BOMB_COUNT_PLAYER1 = 1
+
+POWER_PLAYER2 = 1
+SPEED_PLAYER2 = 10
+BOMB_COUNT_PLAYER2 = 1
 
 
 def justify_x(position_x):
@@ -62,13 +68,14 @@ class Bombochka(arcade.AnimatedTimeSprite):
             self.textures.append(arcade.load_texture(f'Bomb/Bomb_f0{i}.png'))
         self.texture = self.textures[0]
         self.time_bomb = time.time()
+        self.power = 0
 
     def update(self):
         if time.time() - self.time_bomb > 3:
             exp = Explosion()
             exp.center_x = self.center_x
             exp.center_y = self.center_y
-            for i in range(1, POWER + 1):
+            for i in range(1, self.power + 1):
                 exp1 = Explosion()
                 exp1.center_x = exp.center_x - CELL_WIDTH * i
                 exp1.center_y = exp.center_y
@@ -91,10 +98,12 @@ class Bombochka(arcade.AnimatedTimeSprite):
 
 
 class Bomberman(arcade.AnimatedTimeSprite):
-    def __init__(self):
+    def __init__(self, power_player, speed_player, bomb_count):
         super().__init__(0.5)
         # self.texture = arcade.load_texture('Bomberman/Front/Bman_F_f00.png')
-
+        self.power_player = power_player
+        self.speed_player = speed_player
+        self.bomb_count = bomb_count
         # textures front
         self.walk_down_textures = []
         for i in range(8):
@@ -156,6 +165,22 @@ class Bomberman(arcade.AnimatedTimeSprite):
                     self.right = block.left
                 elif self.direction == 1 and self.left <= block.right:
                     self.left = block.right
+        bombs_up =arcade.check_for_collision_with_list(self, window.bomb_power_up)
+        flame_up = arcade.check_for_collision_with_list(self, window.flame_power_up)
+        speed_up = arcade.check_for_collision_with_list(self, window.speed_power_up)
+        if len(bombs_up) > 0:
+            self.bomb_count+=1
+            for bonus in bombs_up:
+                bonus.kill()
+        if len(flame_up) > 0:
+            self.power_player+=1
+            for bonus in flame_up:
+                bonus.kill()
+        if len(speed_up) > 0:
+            self.speed_player+=1
+            for bonus in speed_up:
+                bonus.kill()
+
 
 
 class OurGame(arcade.Window):
@@ -166,12 +191,16 @@ class OurGame(arcade.Window):
         self.solid_blocks = arcade.SpriteList()
         self.explodable_blocks = arcade.SpriteList()
         self.occupied_places = []
-        self.player1 = Bomberman()
-        self.player2 = Bomberman()
+        self.player1 = Bomberman(POWER_PLAYER1, SPEED_PLAYER1, BOMB_COUNT_PLAYER1) #power_player, speed_player, bomb_count
+        self.player2 = Bomberman(POWER_PLAYER2, SPEED_PLAYER2, BOMB_COUNT_PLAYER2)
         self.player1_walk = False
         self.player2_walk = False
-        self.bombs = arcade.SpriteList()
+        self.bombs_player1 = arcade.SpriteList()
+        self.bombs_player2 = arcade.SpriteList()
         self.explosions = arcade.SpriteList()
+        self.bomb_power_up = arcade.SpriteList()
+        self.flame_power_up = arcade.SpriteList()
+        self.speed_power_up = arcade.SpriteList()
 
     # начальные значения
     def setup(self):
@@ -189,6 +218,21 @@ class OurGame(arcade.Window):
                         explodable_block = ExplodableBlock()
                         explodable_block.center_x = x * 60 + CELL_WIDTH / 2
                         explodable_block.center_y = y * 60 + CELL_HEIGHT / 2
+                        bonus_place = random.randint(1,3)
+                        if bonus_place == 1:
+                            bonus = arcade.Sprite('Powerups/BombPowerup.png', 1)
+                        elif bonus_place == 2:
+                            bonus = arcade.Sprite('Powerups/FlamePowerup.png', 1)
+                        else:
+                            bonus = arcade.Sprite('Powerups/SpeedPowerup.png', 1)
+                        bonus.center_x = explodable_block.center_x
+                        bonus.center_y = explodable_block.center_y
+                        if bonus_place == 1:
+                            self.bomb_power_up.append(bonus)
+                        elif bonus_place == 2:
+                            self.flame_power_up.append(bonus)
+                        else:
+                            self.speed_power_up.append(bonus)
                         if (explodable_block.center_x, explodable_block.center_y) not in self.occupied_places:
                             self.explodable_blocks.append(explodable_block)
                             # self.occupied_places.append((explodable_block.center_x, explodable_block.center_y))
@@ -196,21 +240,25 @@ class OurGame(arcade.Window):
         self.player1.center_x = SCREEN_WIDTH / COLUMN_COUNT - CELL_WIDTH / 2
         self.player2.center_y = SCREEN_HEIGHT - CELL_HEIGHT / 2
         self.player2.center_x = SCREEN_WIDTH - CELL_WIDTH / 2
-        #self.player2.color = (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200))
+        # self.player2.color = (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200))
         self.player2.color = arcade.color.RED
 
     # отрисовка объектов
     def on_draw(self):
         arcade.start_render()
-        for x in range(11):
-            for y in range(11):
+        for x in range(ROW_COUNT):
+            for y in range(COLUMN_COUNT):
                 arcade.draw_texture_rectangle(x * 60 + CELL_WIDTH / 2, y * 60 + CELL_HEIGHT / 2, CELL_WIDTH,
                                               CELL_HEIGHT, self.bg)
+        self.bomb_power_up.draw()
+        self.flame_power_up.draw()
+        self.speed_power_up.draw()
         self.solid_blocks.draw()
         self.explodable_blocks.draw()
         self.player1.draw()
         self.player2.draw()
-        self.bombs.draw()
+        self.bombs_player1.draw()
+        self.bombs_player2.draw()
         self.explosions.draw()
 
     # игровая логика
@@ -219,8 +267,10 @@ class OurGame(arcade.Window):
         self.player1.update_animation()
         self.player2.update()
         self.player2.update_animation()
-        self.bombs.update()
-        self.bombs.update_animation()
+        self.bombs_player1.update()
+        self.bombs_player1.update_animation()
+        self.bombs_player2.update()
+        self.bombs_player2.update_animation()
         self.explosions.update()
         self.explosions.update_animation()
         self.solid_blocks.update()
@@ -238,58 +288,60 @@ class OurGame(arcade.Window):
     def on_key_press(self, key: int, modifiers: int):
 
         if key == arcade.key.LEFT and not self.player1_walk:
-            self.player1.change_x = -10
+            self.player1.change_x = -self.player1.speed_player
             self.player1.direction = 1
             self.player1_walk = True
 
         if key == arcade.key.RIGHT and not self.player1_walk:
-            self.player1.change_x = 10
+            self.player1.change_x = self.player1.speed_player
             self.player1.direction = 2
             self.player1_walk = True
 
         if key == arcade.key.UP and not self.player1_walk:
-            self.player1.change_y = 10
+            self.player1.change_y = self.player1.speed_player
             self.player1.direction = 3
             self.player1_walk = True
 
         if key == arcade.key.DOWN and not self.player1_walk:
-            self.player1.change_y = -10
+            self.player1.change_y = -self.player1.speed_player
             self.player1.direction = 4
             self.player1_walk = True
 
         if key == arcade.key.SPACE:
-            bomb = Bombochka()
-            bomb.center_x = justify_x(self.player1.center_x)
-            bomb.center_y = justify_y(self.player1.center_y)
-            self.bombs.append(bomb)
-
-
+            if len(self.bombs_player1) < self.player1.bomb_count:
+                bomb = Bombochka()
+                bomb.center_x = justify_x(self.player1.center_x)
+                bomb.center_y = justify_y(self.player1.center_y)
+                bomb.power = self.player1.power_player
+                self.bombs_player1.append(bomb)
 
         if key == arcade.key.A and not self.player2_walk:
-            self.player2.change_x = -10
+            self.player2.change_x = -self.player2.speed_player
             self.player2.direction = 1
             self.player2_walk = True
 
         if key == arcade.key.D and not self.player2_walk:
-            self.player2.change_x = 10
+            self.player2.change_x = self.player2.speed_player
             self.player2.direction = 2
             self.player2_walk = True
 
         if key == arcade.key.W and not self.player2_walk:
-            self.player2.change_y = 10
+            self.player2.change_y = self.player2.speed_player
             self.player2.direction = 3
             self.player2_walk = True
 
         if key == arcade.key.S and not self.player2_walk:
-            self.player2.change_y = -10
+            self.player2.change_y = -self.player2.speed_player
             self.player2.direction = 4
             self.player2_walk = True
 
         if key == arcade.key.F:
-            bomb = Bombochka()
-            bomb.center_x = justify_x(self.player2.center_x)
-            bomb.center_y = justify_y(self.player2.center_y)
-            self.bombs.append(bomb)
+            if len(self.bombs_player2) < self.player2.bomb_count:
+                bomb = Bombochka()
+                bomb.center_x = justify_x(self.player2.center_x)
+                bomb.center_y = justify_y(self.player2.center_y)
+                bomb.power = self.player2.power_player
+                self.bombs_player2.append(bomb)
 
     # ненажатие на клавишу
     def on_key_release(self, key: int, modifiers: int):
